@@ -11,7 +11,11 @@ let scene, camera, renderer, controls;
 let raycaster, mouse;
 let modelXTemplate, modelOTemplate;
 
-// --- State Permainan (Matriks 3x3) ---
+// Variabel penyimpan skala otomatis
+let scaleX = 1;
+let scaleO = 1;
+
+// --- State Permainan ---
 let gameBoard = [
     ['', '', ''],
     ['', '', ''],
@@ -23,16 +27,14 @@ let placedPieces = [];
 let animatingSpawns = []; 
 let winningPieces = []; 
 
-// Dimensi Grid & Interaksi
 const cellSize = 2.2; 
 const hitBoxes = []; 
 let hoveredHitbox = null;
 
-// Konfigurasi Kamera
 const cameraPositions = [
-    new THREE.Vector3(0, 8, 8),   // Sudut standar
-    new THREE.Vector3(0, 12, 0),  // Top-down
-    new THREE.Vector3(8, 5, 8)    // Isometric-ish
+    new THREE.Vector3(0, 8, 8),   
+    new THREE.Vector3(0, 12, 0),  
+    new THREE.Vector3(8, 5, 8)    
 ];
 let currentCameraIndex = 0;
 let targetCameraPos = cameraPositions[0].clone();
@@ -42,25 +44,26 @@ init();
 animate();
 
 function init() {
-    // 1. Scene Setup
+    // 1. Scene Setup (PAKSA BACKGROUND JADI GELAP)
     scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a2e); // Warna biru tua/ungu gelap
     
     // 2. Camera Setup
     camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.copy(cameraPositions[currentCameraIndex]);
     
     // 3. Renderer Setup
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
     canvasContainer.appendChild(renderer.domElement);
     
     // 4. Lights Setup
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
     
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
     dirLight.position.set(5, 10, 5);
     dirLight.castShadow = true;
     scene.add(dirLight);
@@ -81,21 +84,19 @@ function init() {
     window.addEventListener('keydown', onKeyDown);
     restartBtn.addEventListener('click', resetGame);
 
-    // 8. Buat Objek di Scene
+    // 8. Buat Objek
     createBoard();    
     createHitboxes(); 
     loadModels();     
 }
 
-// --- Membuat Papan 3x3 dengan BoxGeometry ---
 function createBoard() {
     const boardGroup = new THREE.Group();
     
-    // Material futuristik dengan efek glow (emissive)
     const lineMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x1a1a2e,
         emissive: 0x00f2fe,
-        emissiveIntensity: 0.4,
+        emissiveIntensity: 0.6,
         metalness: 0.8, 
         roughness: 0.2 
     });
@@ -106,10 +107,8 @@ function createBoard() {
 
     const geoHorizontal = new THREE.BoxGeometry(length, depth, thickness);
     const geoVertical = new THREE.BoxGeometry(thickness, depth, length);
-
     const offset = cellSize / 2;
 
-    // 2 Garis Horizontal
     const hLine1 = new THREE.Mesh(geoHorizontal, lineMaterial);
     hLine1.position.set(0, 0, -offset);
     hLine1.castShadow = true;
@@ -120,7 +119,6 @@ function createBoard() {
     hLine2.castShadow = true;
     boardGroup.add(hLine2);
 
-    // 2 Garis Vertikal
     const vLine1 = new THREE.Mesh(geoVertical, lineMaterial);
     vLine1.position.set(-offset, 0, 0);
     vLine1.castShadow = true;
@@ -137,16 +135,29 @@ function createBoard() {
 function loadModels() {
     const loader = new GLTFLoader();
 
-    // Pastikan x.glb dan o.glb ada di dalam folder models
     loader.load('models/x.glb', (gltf) => {
         modelXTemplate = gltf.scene;
+        
+        // AUTO-SCALE BINTANG (X)
+        const box = new THREE.Box3().setFromObject(modelXTemplate);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        scaleX = 1.4 / maxDim; // Paksa ukuran maksimal menjadi 1.4 (pas dalam grid)
+
         modelXTemplate.traverse((child) => { if (child.isMesh) child.castShadow = true; });
-    }, undefined, (err) => console.error('Gagal memuat x.glb'));
+    });
 
     loader.load('models/o.glb', (gltf) => {
         modelOTemplate = gltf.scene;
+        
+        // AUTO-SCALE JAMUR (O)
+        const box = new THREE.Box3().setFromObject(modelOTemplate);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        scaleO = 1.4 / maxDim; // Paksa ukuran maksimal menjadi 1.4 (pas dalam grid)
+
         modelOTemplate.traverse((child) => { if (child.isMesh) child.castShadow = true; });
-    }, undefined, (err) => console.error('Gagal memuat o.glb'));
+    });
 }
 
 function createHitboxes() {
@@ -163,20 +174,17 @@ function createHitboxes() {
             const hitbox = new THREE.Mesh(geometry, material.clone());
             hitbox.rotation.x = -Math.PI / 2;
             
-            // Penempatan ke grid 3x3
             const posX = (col - 1) * cellSize;
             const posZ = (row - 1) * cellSize;
             
             hitbox.position.set(posX, 0.1, posZ);
             hitbox.userData = { row, col }; 
-            
             scene.add(hitbox);
             hitBoxes.push(hitbox);
         }
     }
 }
 
-// --- Interaktivitas: Hover ---
 function onMouseMove(event) {
     if (gameOver) return;
 
@@ -196,13 +204,12 @@ function onMouseMove(event) {
         const { row, col } = hitbox.userData;
         
         if (gameBoard[row][col] === '') {
-            hitbox.material.opacity = 0.3;
+            hitbox.material.opacity = 0.2;
             hoveredHitbox = hitbox;
         }
     }
 }
 
-// --- Interaktivitas: Mouse Click ---
 function onMouseClick() {
     if (gameOver || !hoveredHitbox || !modelXTemplate || !modelOTemplate) return;
 
@@ -225,12 +232,12 @@ function placeSymbol(row, col, position) {
     const template = currentPlayer === 'X' ? modelXTemplate : modelOTemplate;
     const piece = template.clone();
     
-    // Transformasi T: Translasi
     piece.position.copy(position);
+    piece.scale.set(0, 0, 0); // Mulai dari 0 untuk animasi
     
-    // Transformasi S: Skala (Animasi Muncul)
-    piece.scale.set(0, 0, 0);
-    piece.userData = { targetScale: 1, type: currentPlayer };
+    // Berikan skala target sesuai hitungan otomatis (bukan 1)
+    const target = currentPlayer === 'X' ? scaleX : scaleO;
+    piece.userData = { targetScale: target, type: currentPlayer };
     
     scene.add(piece);
     placedPieces.push(piece);
@@ -240,12 +247,11 @@ function placeSymbol(row, col, position) {
     hoveredHitbox = null;
 }
 
-// --- Logika Kemenangan Matriks 3x3 ---
 function checkWinState() {
     const winConditions = [
-        [[0,0], [0,1], [0,2]], [[1,0], [1,1], [1,2]], [[2,0], [2,1], [2,2]], // Horizontal
-        [[0,0], [1,0], [2,0]], [[0,1], [1,1], [2,1]], [[0,2], [1,2], [2,2]], // Vertical
-        [[0,0], [1,1], [2,2]], [[0,2], [1,1], [2,0]]                         // Diagonal
+        [[0,0], [0,1], [0,2]], [[1,0], [1,1], [1,2]], [[2,0], [2,1], [2,2]], 
+        [[0,0], [1,0], [2,0]], [[0,1], [1,1], [2,1]], [[0,2], [1,2], [2,2]], 
+        [[0,0], [1,1], [2,2]], [[0,2], [1,1], [2,0]]                         
     ];
 
     for (let condition of winConditions) {
@@ -297,7 +303,6 @@ function updateStatusText() {
     statusText.style.color = currentPlayer === 'X' ? '#00f2fe' : '#fe006a';
 }
 
-// --- Interaktivitas: Keyboard ---
 function onKeyDown(event) {
     if (event.key.toLowerCase() === 'r') {
         resetGame();
@@ -336,24 +341,25 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-// --- Loop Rendering ---
 function animate() {
     requestAnimationFrame(animate);
 
-    // Animasi Scale saat objek ditaruh
+    // Animasi Scale disesuaikan dengan skala otomatis target
     for (let i = animatingSpawns.length - 1; i >= 0; i--) {
         const piece = animatingSpawns[i];
-        if (piece.scale.x < piece.userData.targetScale) {
-            piece.scale.addScalar(0.08); 
+        const target = piece.userData.targetScale;
+        const speed = target * 0.15; // 15% dari target scale per frame
+        
+        if (piece.scale.x < target * 0.95) { 
+            piece.scale.addScalar(speed); 
             piece.rotation.y += 0.2;     
         } else {
-            piece.scale.set(1, 1, 1);
+            piece.scale.set(target, target, target);
             piece.rotation.y = 0;        
             animatingSpawns.splice(i, 1);
         }
     }
 
-    // Transformasi R: Rotasi objek yang menang
     if (gameOver && winningPieces.length > 0) {
         winningPieces.forEach(piece => {
             piece.rotation.y += 0.05; 
