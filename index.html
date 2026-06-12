@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+       <title>3D Tic Tac Toe - Futuristic</title>
+    <link rel="stylesheet" href="css/style.css">
+    
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="ui-container">
+        <h1 id="title">TIC TAC TOE 3D</h1>
+        <h2 id="status">Giliran: Pemain X</h2>
+        <button id="restart-btn">Restart Game (R)</button>
+        <p class="controls-info">Klik kiri: Tempatkan Simbol | Mouse: Putar Kamera | Tombol C: Ganti Kamera</p>
+    </div>
+    
+    <div id="canvas-container"></div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
