@@ -202,7 +202,29 @@ body::before {
   background: rgba(224,64,251,.1); box-shadow: var(--glow-m);
 }
 
-/* Kbd hints */
+.btn-g {
+  color: #69ff47; border-color: rgba(105,255,71,.4);
+}
+.btn-g:hover {
+  background: rgba(105,255,71,.1); box-shadow: 0 0 14px rgba(105,255,71,.55);
+}
+
+/* Toast notification */
+#toast {
+  position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(10px);
+  background: rgba(13,18,32,.95);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-family: var(--font-mono); font-size: .65rem; letter-spacing: .12em;
+  padding: 8px 20px; border-radius: var(--radius);
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s, transform .3s;
+  z-index: 100;
+  white-space: nowrap;
+}
+#toast.show {
+  opacity: 1; transform: translateX(-50%) translateY(0);
+}
 #hints {
   font-size: .58rem; letter-spacing: .09em;
   color: var(--text-dim);
