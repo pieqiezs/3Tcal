@@ -1,6 +1,6 @@
-import * as THREE from 'https://cdn.skypack.dev/three@0.160.0';
-import { OrbitControls } from 'https://cdn.skypack.dev/three@0.160.0/examples/jsm/controls/OrbitControls.js?dts';
-import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.160.0/examples/jsm/loaders/GLTFLoader.js?dts';
+import * as THREE from 'https://esm.sh/three@0.160.0';
+import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader }    from 'https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 
 //MUSIC SISTEM
 
@@ -103,7 +103,7 @@ let over    = false;
 let winLine = [];
 let scores  = { X: 0, O: 0, D: 0 };
 
-   //THREE.JS SETUP
+//THREE.JS SETUP
 
 const wrap   = document.getElementById('canvas-wrap');
 const canvas = document.getElementById('game-canvas');
@@ -151,8 +151,7 @@ controls.maxDistance     = 26;
 controls.maxPolarAngle   = Math.PI * 0.84;
 controls.target.set(0, 0, 0);
 
-
-   //PAPAN
+//PAPAN
 
 const boardGroup = new THREE.Group();
 scene.add(boardGroup);
@@ -216,14 +215,12 @@ boardGroup.add(base);
   boardGroup.add(new THREE.LineSegments(geo, mat));
 })();
 
-   //PIECES — GLTFLoader
+//PIECES — GLTFLoader
 
 const loader = new GLTFLoader();
 
 let xTemplate = null;
 let oTemplate = null;
-
-// Simpan center Y tiap model supaya bisa di-offset saat spawn
 let xCenterY = 0;
 let oCenterY = 0;
 
@@ -270,8 +267,6 @@ function loadGLTF(path, onOk, label) {
   loader.load(path,
     (gltf) => {
       const model = gltf.scene;
-
-      // Normalisasi scale supaya muat di cell
       const box  = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
       const maxS = Math.max(size.x, size.y, size.z);
@@ -284,11 +279,8 @@ function loadGLTF(path, onOk, label) {
         c.receiveShadow = true;
       });
 
-      // Hitung center Y setelah scale — dipakai saat spawn buat sejajarkan tinggi
-      const box2   = new THREE.Box3().setFromObject(model);
+      const box2    = new THREE.Box3().setFromObject(model);
       const centerY = (box2.min.y + box2.max.y) / 2;
-
-      // Simpan centerY per model, tidak geser position di sini
       if (label === 'X.GLB') xCenterY = centerY;
       else                    oCenterY = centerY;
 
@@ -312,14 +304,12 @@ function loadGLTF(path, onOk, label) {
 loadGLTF('models/x.glb', (m) => { xTemplate = m; }, 'X.GLB');
 loadGLTF('models/o.glb', (m) => { oTemplate = m; }, 'O.GLB');
 
-
-   //objek SPAWN SYSTEM
+//SPAWN SYSTEM
 
 const pieces   = {};
 const spawning = [];
 const winning  = [];
 
-// Y dasar tempat semua objek duduk di atas cell
 const BASE_Y = CELL_H / 5 + 0.95;
 
 function spawnPiece(cellIndex) {
@@ -340,22 +330,18 @@ function spawnPiece(cellIndex) {
 
   const col = cellIndex % COLS;
   const row = Math.floor(cellIndex / COLS);
-
-  // Offset Y: geser ke atas sebesar centerY supaya titik tengah model
-  // selalu duduk di BASE_Y yang sama antara X dan O
   const centerY = isX ? xCenterY : oCenterY;
 
   mesh.position.set(
     (col * STEP) - HALF,
-    BASE_Y - centerY,        // ← sejajarkan berdasarkan center model
+    BASE_Y - centerY,
     (row * STEP) - HALF
   );
 
-  // Simpan scale asli dari loadGLTF sebelum di-reset ke 0
   const currentScale = mesh.scale.x;
   mesh.scale.setScalar(0);
   mesh.userData.baseScale  = currentScale > 0 ? currentScale : 1;
-  mesh.userData.spawnBaseY = BASE_Y - centerY; // simpan Y asli untuk animasi win
+  mesh.userData.spawnBaseY = BASE_Y - centerY;
 
   scene.add(mesh);
   pieces[cellIndex] = mesh;
@@ -373,9 +359,8 @@ function applyPieceMat(obj, col, emi) {
   });
 }
 
-/* ════════════════════════════════════════════════════════
-   ANIMATION UPDATES
-════════════════════════════════════════════════════════ */
+//ANIMATION
+
 const clock = new THREE.Clock();
 
 function tickAnimations(dt) {
@@ -394,7 +379,6 @@ function tickAnimations(dt) {
   const t = performance.now() * 0.001;
   for (const a of winning) {
     a.mesh.rotation.y += dt * 2.4;
-    // Pakai spawnBaseY supaya hover animasi juga sejajar
     const baseY = a.mesh.userData.spawnBaseY ?? BASE_Y;
     a.mesh.position.y = baseY + Math.sin(t * 2.5 + a.phase) * 0.12;
   }
@@ -408,9 +392,8 @@ function easeOvershoot(t) {
   return 1;
 }
 
-/* ════════════════════════════════════════════════════════
-   GAME LOGIC
-════════════════════════════════════════════════════════ */
+//GAME LOGIC
+
 function checkWin() {
   for (const combo of WIN_COMBOS) {
     const [a, b, c] = combo;
@@ -482,7 +465,7 @@ function resetGame() {
   updateStatusUI();
 }
 
-   //RAYCASTER
+//RAYCASTER
 
 const raycaster = new THREE.Raycaster();
 const mouse2    = new THREE.Vector2();
@@ -535,7 +518,7 @@ canvas.addEventListener('click', (e) => {
   }
 });
 
-   //KEYBOARD
+//KEYBOARD
 
 window.addEventListener('keydown', (e) => {
   switch (e.key.toUpperCase()) {
@@ -549,7 +532,7 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-   //CAMERA TWEEN
+//CAMERA TWEEN
 
 function tweenCamera(toPos, toTgt) {
   const fromPos = camera.position.clone();
@@ -572,8 +555,7 @@ function cycleCamera() {
   tweenCamera(p.pos, p.tgt);
 }
 
-
-  //UI HELPERS
+//UI HELPERS
 
 const statusMsg = document.getElementById('status-msg');
 const winFlash  = document.getElementById('win-flash');
@@ -597,14 +579,14 @@ function updateScoreUI() {
   document.getElementById('score-d').textContent = `D  ${scores.D}`;
 }
 
-   //HTML BUTTONS
+//HTML BUTTONS
 
 document.getElementById('btn-restart').addEventListener('click', resetGame);
 document.getElementById('btn-cam').addEventListener('click', cycleCamera);
 document.getElementById('btn-music').addEventListener('click', toggleMusic);
 window._toggleMusic = toggleMusic;
 
-  //BACKGROUND PARTICLES
+//BACKGROUND PARTICLES
 
 (function addParticles() {
   const N   = 250;
@@ -620,7 +602,7 @@ window._toggleMusic = toggleMusic;
   scene.add(new THREE.Points(geo, mat));
 })();
 
-   //RESIZE
+//RESIZE
 
 function onResize() {
   const w = wrap.clientWidth, h = wrap.clientHeight;
@@ -631,7 +613,7 @@ function onResize() {
 window.addEventListener('resize', onResize);
 onResize();
 
-   //RENDER LOOP
+//RENDER LOOP
 
 function animate() {
   requestAnimationFrame(animate);
@@ -643,8 +625,7 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-
-   //INIT
+//INIT
 
 updateStatusUI();
 animate();
