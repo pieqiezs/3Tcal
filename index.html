@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <title>CRACK CRICK CROEK</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Tic Tac Toe — Grafika Komputer</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -50,11 +52,14 @@
 
     <button class="btn btn-c" id="btn-restart">⟳ Restart Game</button>
     <button class="btn btn-m" id="btn-cam">◎ Camera</button>
+    <button class="btn btn-g" id="btn-music" onclick="window._toggleMusic && window._toggleMusic()">♫ Music OFF</button>
 
     <div id="hints">
       <span><kbd>Click</kbd> Place piece</span>
       <span><kbd>R</kbd> Restart</span>
       <span><kbd>C</kbd> Camera</span>
+      <span><kbd>Space</kbd> Colors</span>
+      <span><kbd>M</kbd> Music</span>
       <span><kbd>Drag</kbd> Orbit</span>
       <span><kbd>Scroll</kbd> Zoom</span>
     </div>
@@ -64,34 +69,5 @@
 </div><!-- /#app -->
 
 <script type="module" src="js/main.js"></script>
-</body>
-</html><!DOCTYPE html>
-<html lang="id">
-<head>
-       <title>3D Tic Tac Toe - Futuristic</title>
-    <link rel="stylesheet" href="./style.css">
-    
-    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
-    
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
-</head>
-<body>
-    <div id="ui-container">
-        <h1 id="title">TIC TAC TOE 3D</h1>
-        <h2 id="status">Giliran: Pemain X</h2>
-        <button id="restart-btn">Restart Game (R)</button>
-        <p class="controls-info">Klik kiri: Tempatkan Simbol | Mouse: Putar Kamera | Tombol C: Ganti Kamera</p>
-    </div>
-    
-    <div id="canvas-container"></div>
-
-    <script type="module" src="js/main.js"></script>
 </body>
 </html>
