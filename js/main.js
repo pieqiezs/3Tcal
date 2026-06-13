@@ -3,6 +3,85 @@ import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/exampl
 import { GLTFLoader }    from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 
 /* ════════════════════════════════════════════════════════
+   MUSIC SYSTEM
+════════════════════════════════════════════════════════ */
+const audio = new Audio();
+audio.loop   = true;
+audio.volume = 0.45;
+
+// Try common filenames — user can place their audio file as:
+//   music/bgm.mp3  OR  music/bgm.ogg  OR  music/bgm.wav
+const MUSIC_PATHS = ['music/1975.mp3'];
+let musicLoaded = false;
+let musicPlaying = false;
+
+function tryLoadMusic(paths, idx = 0) {
+  if (idx >= paths.length) return;
+  audio.src = paths[idx];
+  audio.load();
+  audio.addEventListener('canplaythrough', () => { musicLoaded = true; }, { once: true });
+  audio.addEventListener('error', () => tryLoadMusic(paths, idx + 1), { once: true });
+}
+tryLoadMusic(MUSIC_PATHS);
+
+function toggleMusic() {
+  if (!musicLoaded) { showToast('Letakkan file audio di folder music/ (bgm.mp3/ogg/wav)'); return; }
+  if (musicPlaying) { audio.pause(); musicPlaying = false; updateMusicBtn(); }
+  else              { audio.play().then(() => { musicPlaying = true; updateMusicBtn(); }); }
+}
+
+function updateMusicBtn() {
+  const btn = document.getElementById('btn-music');
+  if (btn) btn.textContent = musicPlaying ? '♫ Music ON' : '♫ Music OFF';
+}
+
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    document.getElementById('app').appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+/* ════════════════════════════════════════════════════════
+   RAINBOW COLOR SYSTEM
+════════════════════════════════════════════════════════ */
+// Predefined rainbow palette — cycles each Space press
+const RAINBOW_PALETTE = [
+  // [color, emissive] for X and O respectively
+  { x: [0xff4081, 0xff1155], o: [0x40c4ff, 0x0088cc] }, // default: pink / cyan
+  { x: [0xff6d00, 0xdd4400], o: [0x00e676, 0x00994d] }, // orange / green
+  { x: [0xffea00, 0xcc9900], o: [0xaa00ff, 0x6600cc] }, // yellow / purple
+  { x: [0x00e5ff, 0x0088bb], o: [0xff1744, 0xcc0022] }, // cyan / red
+  { x: [0x69ff47, 0x33cc00], o: [0xff80ab, 0xcc0066] }, // lime / pink
+  { x: [0xffd740, 0xcc8800], o: [0x40c4ff, 0x0055cc] }, // gold / sky
+];
+let paletteIdx = 0;
+
+function cycleColors() {
+  paletteIdx = (paletteIdx + 1) % RAINBOW_PALETTE.length;
+  const pal = RAINBOW_PALETTE[paletteIdx];
+
+  // Update all existing pieces in scene
+  for (const [idx, mesh] of Object.entries(pieces)) {
+    const isX = board[idx] === 'X';
+    const [col, emi] = isX ? pal.x : pal.o;
+    applyPieceMat(mesh, col, emi);
+  }
+  // Update procedural fallback colors too
+  showToast(`🎨 Color theme ${paletteIdx + 1}/${RAINBOW_PALETTE.length}`);
+}
+
+function getCurrentColors() {
+  return RAINBOW_PALETTE[paletteIdx];
+}
+
+/* ════════════════════════════════════════════════════════
    CONSTANTS
 ════════════════════════════════════════════════════════ */
 const COLS      = 3;
@@ -223,13 +302,22 @@ function loadGLTF(path, onOk, label) {
       const box   = new THREE.Box3().setFromObject(model);
       const size  = box.getSize(new THREE.Vector3());
       const maxS  = Math.max(size.x, size.y, size.z);
-      if (maxS > 0) model.scale.multiplyScalar(0.95 / maxS);
+      // O model gets extra scale-down (0.72) so it matches X visually
+      const scaleFactor = label === 'O.GLB' ? 0.68 : 0.95;
+      if (maxS > 0) model.scale.multiplyScalar(scaleFactor / maxS);
 
       model.traverse(c => {
         if (!c.isMesh) return;
         c.castShadow    = true;
         c.receiveShadow = true;
       });
+
+      // Re-center model so its bottom sits at y=0 (aligns X and O heights)
+      const box2  = new THREE.Box3().setFromObject(model);
+      const minY  = box2.min.y;
+      model.position.y -= minY;          // shift up so bottom = 0
+      model.userData.heightOffset = 0;   // already bottom-aligned
+
       onOk(model);
       onOneLoaded();
     },
@@ -263,10 +351,12 @@ function spawnPiece(cellIndex) {
 
   if (isX && xTemplate) {
     mesh = xTemplate.clone();
-    applyPieceMat(mesh, 0xff4081, 0xff1155);
+    const [col, emi] = getCurrentColors().x;
+    applyPieceMat(mesh, col, emi);
   } else if (!isX && oTemplate) {
     mesh = oTemplate.clone();
-    applyPieceMat(mesh, 0x40c4ff, 0x0088cc);
+    const [col, emi] = getCurrentColors().o;
+    applyPieceMat(mesh, col, emi);
   } else {
     mesh = isX ? makeProceduralX() : makeProceduralO();
   }
@@ -389,7 +479,7 @@ function handleWin(combo) {
   showWinBanner(`PLAYER ${turn} WINS!`);
   updateScoreUI();
 
-  // Camera zoom toward win line center
+  // Camera — softer zoom toward win line center (not too close)
   const center = new THREE.Vector3();
   combo.forEach(i => {
     const m = cellMeshes[i];
@@ -398,7 +488,7 @@ function handleWin(combo) {
   center.divideScalar(3);
   center.y = 0;
   tweenCamera(
-    center.clone().add(new THREE.Vector3(1.5, 6, 7)),
+    center.clone().add(new THREE.Vector3(2, 10, 13)),   // was (1.5, 6, 7) — raised + pulled back
     center
   );
 }
@@ -499,8 +589,13 @@ canvas.addEventListener('click', (e) => {
 ════════════════════════════════════════════════════════ */
 window.addEventListener('keydown', (e) => {
   switch (e.key.toUpperCase()) {
-    case 'R': resetGame(); break;
-    case 'C': cycleCamera(); break;
+    case 'R': resetGame();    break;
+    case 'C': cycleCamera();  break;
+    case 'M': toggleMusic();  break;
+    case ' ':
+      e.preventDefault();
+      cycleColors();
+      break;
   }
 });
 
@@ -561,6 +656,8 @@ function updateScoreUI() {
 ════════════════════════════════════════════════════════ */
 document.getElementById('btn-restart').addEventListener('click', resetGame);
 document.getElementById('btn-cam').addEventListener('click', cycleCamera);
+document.getElementById('btn-music').addEventListener('click', toggleMusic);
+window._toggleMusic = toggleMusic;
 
 /* ════════════════════════════════════════════════════════
    BACKGROUND PARTICLES
